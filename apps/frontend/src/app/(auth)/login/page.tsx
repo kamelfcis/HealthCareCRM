@@ -58,13 +58,10 @@ export default function LoginPage() {
       storage.setSession(result.accessToken, result.refreshToken, result.user);
       router.push(roleRedirectMap[result.user.role] ?? "/dashboard");
       toast.success(t("auth.welcomeBack"));
-      // Ensure overlay is always dismissed after successful auth/navigation.
-      setTimeout(() => {
-        stopLoading();
-      }, 650);
     } catch {
-      stopLoading();
       toast.error(t("auth.invalidCredentials"));
+    } finally {
+      stopLoading();
     }
   };
 
