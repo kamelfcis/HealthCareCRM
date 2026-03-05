@@ -1,0 +1,48 @@
+import axios from "axios";
+import { storage } from "./storage";
+
+const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000/api";
+
+export const api = axios.create({
+  baseURL
+});
+
+api.interceptors.request.use((config) => {
+  const token = storage.getAccessToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config as typeof error.config & { _retry?: boolean };
+
+    if (error.response?.status === 401 && !originalRequest?._retry) {
+      originalRequest._retry = true;
+      const refreshToken = storage.getRefreshToken();
+
+      if (!refreshToken) {
+        storage.clearSession();
+        return Promise.reject(error);
+      }
+
+      try {
+        const refreshResponse = await axios.post(`${baseURL}/auth/refresh`, { refreshToken });
+        const newAccessToken = refreshResponse.data.data.accessToken;
+        const newRefreshToken = refreshResponse.data.data.refreshToken;
+        const refreshedUser = refreshResponse.data.data.user ?? storage.getUser();
+        if (refreshedUser) storage.setSession(newAccessToken, newRefreshToken, refreshedUser);
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        storage.clearSession();
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);

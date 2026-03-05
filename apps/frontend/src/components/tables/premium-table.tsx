@@ -1,0 +1,198 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import {
+  ColumnDef,
+  SortingState,
+  VisibilityState,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable
+} from "@tanstack/react-table";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowUpDown, SlidersHorizontal } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/i18n-provider";
+
+interface PremiumTableProps<TData> {
+  columns: ColumnDef<TData>[];
+  data: TData[];
+  loading?: boolean;
+  emptyMessage?: string;
+  cardRender: (row: TData) => React.ReactNode;
+  view: "table" | "cards";
+}
+
+export function PremiumTable<TData>({
+  columns,
+  data,
+  loading = false,
+  emptyMessage,
+  cardRender,
+  view
+}: PremiumTableProps<TData>) {
+  const { t } = useI18n();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [showColumns, setShowColumns] = useState(false);
+
+  const sortableColumns = useMemo(
+    () => columns.filter((column) => "accessorKey" in column && !!column.header),
+    [columns]
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+      columnVisibility
+    },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel()
+  });
+
+  if (loading) {
+    return (
+      <div className="grid gap-2">
+        {Array.from({ length: 6 }).map((_, idx) => (
+          <Skeleton key={idx} className="h-14 rounded-2xl" />
+        ))}
+      </div>
+    );
+  }
+
+  if (!data.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 py-16 text-center text-slate-500">
+        {emptyMessage ?? t("common.noData")}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="relative flex justify-end">
+        <button
+          className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition hover:bg-orange-50"
+          onClick={() => setShowColumns((value) => !value)}
+        >
+          <SlidersHorizontal size={15} />
+          {t("common.filters")}
+        </button>
+        <AnimatePresence>
+          {showColumns ? (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="absolute right-0 top-11 z-20 w-48 rounded-xl border border-slate-200 bg-white p-2 shadow-soft"
+            >
+              {sortableColumns.map((column) => {
+                const key = String((column as { accessorKey?: string }).accessorKey ?? "");
+                const checked = table.getColumn(key)?.getIsVisible() ?? true;
+                return (
+                  <label key={key} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm hover:bg-orange-50">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) => table.getColumn(key)?.toggleVisibility(event.target.checked)}
+                    />
+                    {String(column.header)}
+                  </label>
+                );
+              })}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {view === "table" ? (
+          <motion.div
+            key="table"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/80 shadow-soft backdrop-blur-sm"
+          >
+            <div className="max-h-[65vh] overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10 bg-white/95">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <th key={header.id} className="border-b border-slate-100 px-4 py-3 text-left font-medium text-slate-600">
+                          {header.isPlaceholder ? null : (
+                            <button
+                              className="inline-flex items-center gap-1"
+                              onClick={header.column.getToggleSortingHandler()}
+                            >
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              {header.column.getCanSort() ? (
+                                <ArrowUpDown
+                                  size={14}
+                                  className={cn(
+                                    "transition",
+                                    header.column.getIsSorted() ? "text-orange-500" : "text-slate-400"
+                                  )}
+                                />
+                              ) : null}
+                            </button>
+                          )}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody>
+                  {table.getRowModel().rows.map((row, idx) => (
+                    <motion.tr
+                      key={row.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.02 }}
+                      className={cn(
+                        "border-b border-slate-100 transition hover:bg-orange-50/50",
+                        idx % 2 === 0 ? "bg-white/80" : "bg-slate-50/30"
+                      )}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id} className="px-4 py-3 text-slate-700">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="cards"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="grid auto-rows-max items-start gap-3 sm:grid-cols-2 xl:grid-cols-3"
+          >
+            {data.map((row, idx) => (
+              <motion.div
+                key={idx}
+                layout
+                whileHover={{ y: -4 }}
+                className="self-start rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-soft backdrop-blur-sm"
+              >
+                {cardRender(row)}
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
