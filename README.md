@@ -36,6 +36,21 @@ Frontend runs on `http://localhost:3000` and backend on `http://localhost:5000`.
 - `npm run db:migrate`: run Prisma migration
 - `npm run db:seed`: run seed script
 
+## Windows VPS (PM2 quick run)
+
+This repository includes `ecosystem.config.cjs` for PM2 with non-conflicting ports:
+
+- Backend: `5000`
+- Frontend: `3001`
+
+Basic production flow:
+
+1. `npm install`
+2. `npm run build`
+3. `npm run db:migrate --workspace backend`
+4. `pm2 start ecosystem.config.cjs`
+5. `pm2 save`
+
 ## Branding
 
 - Main logo: `healthcare.jpeg` (copied to `apps/frontend/public/healthcare.jpeg`)

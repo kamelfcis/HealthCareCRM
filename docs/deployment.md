@@ -1,29 +1,58 @@
 # Deployment Guide
 
-## 1) Backend deployment (VPS)
+## 1) Windows VPS + PM2 (no port conflict)
 
-1. Provision Ubuntu server and install Node.js 20+, npm, and PM2.
-2. Clone repo and install dependencies:
+This setup uses:
+
+- Backend API: `5000`
+- Frontend Next.js: `3001`
+
+So it does not conflict with apps already running on `3000` or `4000`.
+
+### Step-by-step
+
+1. Install prerequisites on VPS:
+   - Node.js 20+
+   - Git
+   - PM2 (`npm install -g pm2`)
+2. Clone repository:
+   - `git clone https://github.com/kamelfcis/HealthCareCRM.git`
+   - `cd HealthCareCRM`
+3. Install dependencies:
    - `npm install`
-3. Configure `.env` with production values.
-4. Build backend:
-   - `npm run build --workspace backend`
-5. Run migrations and seed:
+4. Create production env files:
+   - Copy root env template:
+     - `copy .env.example .env`
+   - Copy frontend env template:
+     - `copy apps\frontend\.env.production.example apps\frontend\.env.production`
+5. Edit `.env` with real secrets and URLs:
+   - `JWT_ACCESS_SECRET`
+   - `JWT_REFRESH_SECRET`
+   - `CORS_ORIGIN` (include your frontend URL)
+6. Build project:
+   - `npm run build`
+7. Apply database migrations:
    - `npm run db:migrate --workspace backend`
+8. Optional seed:
    - `npm run db:seed --workspace backend`
-6. Start with PM2:
-   - `pm2 start backend/dist/server.js --name healthcare-crm-api`
-7. Put Nginx in front of backend and allow HTTPS with Certbot.
+9. Start both apps with PM2:
+   - `pm2 start ecosystem.config.cjs`
+10. Save PM2 process list:
+    - `pm2 save`
+11. Verify:
+    - `pm2 list`
+    - `pm2 logs healthcare-backend`
+    - `pm2 logs healthcare-frontend`
 
-## 2) Frontend deployment (VPS)
+### Update deployment after new push
 
-1. Build frontend:
-   - `npm run build --workspace frontend`
-2. Start frontend:
-   - `npm run start --workspace frontend`
-3. Reverse proxy with Nginx to the frontend process.
+1. `git pull origin main`
+2. `npm install`
+3. `npm run build`
+4. `npm run db:migrate --workspace backend`
+5. `pm2 restart ecosystem.config.cjs`
 
-## 3) Railway deployment
+## 2) Railway deployment
 
 ### Backend service
 
@@ -39,7 +68,7 @@
 - Start command: `npm run start`
 - Set `NEXT_PUBLIC_API_BASE_URL` to backend public URL + `/api`
 
-## 4) Database deployment
+## 3) Database deployment
 
 ### SQLite (default)
 
@@ -61,7 +90,7 @@ Minimum checklist:
 - Use SSL-enabled connection URLs
 - Rotate DB credentials per environment
 
-## 5) Production hardening checklist
+## 4) Production hardening checklist
 
 - `helmet` enabled
 - strict CORS origin list
