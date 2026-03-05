@@ -1,7 +1,12 @@
 import axios from "axios";
 import { storage } from "./storage";
 
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000/api";
+const runtimeApiBase =
+  typeof window !== "undefined"
+    ? `${window.location.protocol}//${window.location.hostname}:5000/api`
+    : "http://localhost:5000/api";
+
+const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ?? runtimeApiBase;
 
 export const api = axios.create({
   baseURL

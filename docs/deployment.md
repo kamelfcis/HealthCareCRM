@@ -43,6 +43,9 @@ So it does not conflict with apps already running on `3000` or `4000`.
     - `pm2 list`
     - `pm2 logs healthcare-backend`
     - `pm2 logs healthcare-frontend`
+12. Open Windows Firewall inbound TCP rules:
+    - Frontend: `3001`
+    - Backend API: `5000`
 
 ### Update deployment after new push
 
